@@ -1,41 +1,34 @@
 def analyze_rules(rules):
 
-    conflicts = []
-    overlaps = []
-    shadowed = []
-    redundant = []
+    results = {
+        "overlaps": [],
+        "conflicts": [],
+        "shadowed": [],
+        "redundant": []
+    }
 
     for i in range(len(rules)):
 
         for j in range(i + 1, len(rules)):
 
-            rule1 = rules[i]
-            rule2 = rules[j]
+            earlier = rules[i]
+            later = rules[j]
 
-            if rule1.overlaps_with(rule2):
+            # 1. Check whether rules affect the same traffic
+            if earlier.overlaps_with(later):
 
-                overlaps.append((i, j))
+                results["overlaps"].append((i, j))
 
-                if rule1.action != rule2.action:
+                # 2. Different actions = conflict
+                if earlier.action != later.action:
+                    results["conflicts"].append((i, j))
 
-                    conflicts.append((i, j))
+                # 3. Same behavior = redundant
+                elif earlier.is_identical_to(later):
+                    results["redundant"].append((i, j))
 
-                else:
+                # 4. Earlier broader rule completely covers later rule
+                if earlier.contains(later):
+                    results["shadowed"].append((i, j))
 
-                    if rule1.source == rule2.source:
-                        redundant.append((i, j))
-
-                if is_shadowed(rule1, rule2):
-
-                    shadowed.append((i, j))
-
-    return conflicts, overlaps, shadowed, redundant
-
-def is_shadowed(previous_rule, current_rule):
-
-    source_covered = current_rule.source.subnet_of(previous_rule.source)
-
-    same_port = current_rule.port == previous_rule.port
-    same_protocol = current_rule.protocol == previous_rule.protocol
-
-    return source_covered and same_port and same_protocol
+    return results
